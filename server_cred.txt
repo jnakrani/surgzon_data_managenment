@@ -1,0 +1,20 @@
+
+SERVER CRED:
+
+Host Live-surgzon-staging
+  HostName 13.62.62.88
+  User ubuntu
+  IdentityFile ~/.ssh/surgzon-stage.pem
+
+
+----------------------------------------------------------------------------------------
+Host Live-surgzon-Prod
+  HostName 51.21.50.105
+  User ubuntu
+  IdentityFile ~/.ssh/prod-surgzon.pem
+
+
+FOLDER PATH FOR DATA:
+/var/www/html/pn02721-chess-surgzon/images/product/product_files
+
+

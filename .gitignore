@@ -1,0 +1,88 @@
+# ================================
+# OS / Editor
+# ================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ================================
+# Python
+# ================================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+ENV/
+.venv/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+
+# ================================
+# Node / JavaScript / TypeScript
+# ================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+out/
+
+# ================================
+# Logs (IMPORTANT)
+# ================================
+*.log
+logs/
+log/
+
+# ================================
+# Large / Generated Data
+# ================================
+*.csv
+*.tsv
+*.parquet
+*.sqlite
+*.db
+
+# ================================
+# Model / AI files (optional)
+# ================================
+*.pt
+*.pth
+*.onnx
+*.h5
+*.ckpt
+*.joblib
+*.pkl
+
+# ================================
+# Jupyter
+# ================================
+.ipynb_checkpoints/
+
+# ================================
+# Environment variables
+# ================================
+.env
+.env.*
+!.env.example
+
+# ================================
+# Git
+# ================================
+*.orig
+*.rej
+
+# ================================
+# Temporary / Backup files
+# ================================
+*.tmp
+*.temp
+*.swp
+*.bak
