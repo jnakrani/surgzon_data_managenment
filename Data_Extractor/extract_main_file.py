@@ -1331,14 +1331,6 @@ def process_container_files(
 
 # Example usage:
 if __name__ == "__main__":
-    # process_container_files()
-
-    # INPUT_FILE = r"C:\Users\BitCoding Solutions\Downloads\HRS-Plate, Fixation, Bone-GM DOS REIS INDUSTRIA E COMERCIO LTDA-202502.csv"
-    # INPUT_FILE = r"C:\Users\BitCoding Solutions\Downloads\HRY - PROSTHESIS, KNEE, FEMOROTIBIAL, SEMI-CONSTRAINED, CEMENTED, METAL POLYMER - Smith & Nephew, Inc - 202502.csv"
-    # # OUTPUT_FILE = "te3st_data03.xlsx"
-    # OUTPUT_FILE = "HRY - PROSTHESIS, KNEE, FEMOROTIBIAL, SEMI-CONSTRAINED, CEMENTED, METAL POLYMER - Smith & Nephew, Inc - 202502-AI-Extracted.xlsx"
-
-    # process_excel(INPUT_FILE, OUTPUT_FILE, max_rows=None)
     desc = """GENII CUTTING BLOCK SZ 6
                                     W/CAPTURED POSTERIOR SLOT"""
     desc = re.sub(r'\s+', ' ', desc.strip())
@@ -1351,67 +1343,40 @@ if __name__ == "__main__":
     if not parsed_json:
         parsed = rule_based_parse(desc)
     else:
-        # Step 2B: Normalize
+        # Normalize
         normalized = {f: "" for f in OUTPUT_FIELDS}
         for k, v in parsed_json.items():
             if k.lower() in [x.lower() for x in OUTPUT_FIELDS]:
                 normalized[k.lower()] = str(v).strip()
 
-        # Step 2C: Fill missing fields (rule-based)
+        # Fill missing fields (rule-based)
         text_up = desc.upper()
-        print(":: text_up ::", text_up)
         if not normalized.get("diameter"):      normalized["diameter"]    = rb_extract_diameter(text_up) or ""
-        print(":: diameter ::")
         if not normalized.get("length"):        normalized["length"]      = rb_extract_length(text_up) or ""
-        print(":: length ::")
         if not normalized.get("height"):        normalized["height"]      = rb_extract_height(text_up) or ""
-        print(":: height ::")
         if not normalized.get("width"):         normalized["width"]       = rb_extract_width(text_up) or ""
-        print(":: width ::")
         if not normalized.get("thickness"):     normalized["thickness"]   = rb_thickness(text_up) or ""
-        print(":: thickness ::")
         if not normalized.get("coated"):        normalized["coated"]      = rb_coated(text_up) or ""
-        print(":: coated ::")
         if not normalized.get("constrained"):   normalized["constrained"] = rb_constrained(text_up) or ""
-        print(":: constrained ::")
         if not normalized.get("material"):      normalized["material"]    = rb_material(text_up) or ""
-        print(":: material ::")
         if not normalized.get("cannulated"):    normalized["cannulated"]  = rb_cannulated(text_up) or ""
-        print(":: cannulated ::")
         if not normalized.get("cancellous"):    normalized["cancellous"]  = rb_cancellous(text_up) or ""
-        print(":: cancellous ::")
         if not normalized.get("thread"):        normalized["thread"]      = rb_thread(text_up) or ""
-        print(":: thread ::")
         if not normalized.get("locking"):       normalized["locking"]     = rb_locking(text_up) or ""
-        print(":: locking ::")
         if not normalized.get("size"):          normalized["size"]        = rb_size(text_up) or ""
-        print(":: size ::")
         if not normalized.get("compression"):   normalized["compression"] = rb_compression(text_up) or ""
-        print(":: compression ::")
         if not normalized.get("shape"):         normalized["shape"]       = rb_shape(text_up) or ""
-        print(":: shape ::")
         if not normalized.get("loop"):          normalized["loop"]        = rb_loop(text_up) or ""
-        print(":: loop ::")
         if not normalized.get("bone"):          normalized["bone"]        = rb_bone(text_up) or ""
-        print(":: bone ::")
         if not normalized.get("side"):          normalized["side"]        = rb_side(text_up) or ""
-        print(":: side ::")
         if not normalized.get("angle"):         normalized["angle"]       = rb_angle(text_up) or ""
-        print(":: angle ::")
         if not normalized.get("position"):      normalized["position"]    = rb_position(text_up) or ""
-        print(":: position ::")
         if not normalized.get("offset"):        normalized["offset"]      = rb_offset(text_up) or ""
-        print(":: offset ::")
         if not normalized.get("sterile"):       normalized["sterile"]     = rb_sterile(text_up) or ""
-        print(":: sterile ::")
         if not normalized.get("headed"):        normalized["headed"]      = rb_headed(text_up) or ""
-        print(":: headed ::")
         if not normalized.get("dimensions"):    normalized["dimensions"]  = ""
-        print(":: dimensions ::")
         if not normalized.get("color"):         normalized["color"]       = rb_color(text_up) or ""
-        print(":: color ::")
         if not normalized.get("other"):         normalized["other"]       = rb_other(desc, normalized)
-        print(":: other ::")
 
         # Fill product using PRODUCT_MAP if empty
         if not normalized.get("product"):
@@ -1422,4 +1387,4 @@ if __name__ == "__main__":
 
         parsed = normalized
 
-    print("\n ::: rule-based JSON Response ::: \n", parsed)
+    print("\n ::: Parsed Response ::: \n", parsed)

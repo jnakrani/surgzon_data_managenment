@@ -3,6 +3,7 @@
 # ================================
 .DS_Store
 Thumbs.db
+desktop.ini
 .vscode/
 .idea/
 
@@ -19,23 +20,12 @@ venv/
 ENV/
 .venv/
 pip-wheel-metadata/
+*.egg-info/
 .pytest_cache/
 .mypy_cache/
 
 # ================================
-# Node / JavaScript / TypeScript
-# ================================
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-dist/
-build/
-out/
-
-# ================================
-# Logs (IMPORTANT)
+# Logs
 # ================================
 *.log
 logs/
@@ -51,7 +41,7 @@ log/
 *.db
 
 # ================================
-# Model / AI files (optional)
+# Model / AI files
 # ================================
 *.pt
 *.pth
@@ -65,13 +55,35 @@ log/
 # Jupyter
 # ================================
 .ipynb_checkpoints/
+*.ipynb
 
 # ================================
-# Environment variables
+# Environment & Secrets
 # ================================
 .env
 .env.*
 !.env.example
+credentials.txt
+server_cred.txt
+server-cred/
+
+# ================================
+# Documents & Binary files
+# ================================
+*.docx
+*.xlsx
+
+# ================================
+# Output & Downloads
+# ================================
+downloads/
+Data/
+AI_review_rating/first_output_review-rating/
+
+# ================================
+# Submodule / Repo
+# ================================
+surgzon_repo/
 
 # ================================
 # Git

@@ -1,8 +1,8 @@
 import os
+import sys
 from collections import defaultdict
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient, ContainerClient
 from dotenv import load_dotenv
-from azure.storage.blob import ContainerClient
 
 
 # ---------------- Azure Setup ----------------
@@ -40,6 +40,189 @@ def list_files_in_folder(folder_name: str):
     blob_list = container_client.list_blobs(name_starts_with=folder_name + "/")
     for blob in blob_list:
         print(f"- {blob.name}")
+
+
+def list_all_folders():
+    """
+    Display all top-level folders in the container in a clean format.
+    """
+    print("🚀 LISTING ALL FOLDERS IN CONTAINER")
+    print("=" * 60)
+    
+    try:
+        folders = list_folders(container_client)
+        
+        if not folders:
+            print("❌ No folders found in the container")
+            return []
+        
+        print(f"📂 Found {len(folders)} folders:")
+        print("-" * 60)
+        
+        for i, folder in enumerate(folders, 1):
+            print(f"   {i:3d}. {folder}")
+        
+        print("-" * 60)
+        print(f"📊 Total: {len(folders)} folders")
+        
+        return folders
+        
+    except Exception as e:
+        print(f"❌ Error listing folders: {e}")
+        return []
+
+
+def get_folders_as_python_list():
+    """
+    Get all folders formatted as a Python list that can be copied and pasted.
+    """
+    print("🚀 GETTING FOLDERS AS PYTHON LIST")
+    print("=" * 60)
+    
+    try:
+        folders = list_folders(container_client)
+        
+        if not folders:
+            print("❌ No folders found in the container")
+            return []
+        
+        print(f"📂 Found {len(folders)} folders")
+        print("\n📋 COPY THIS PYTHON LIST:")
+        print("=" * 60)
+        
+        # Format as Python list
+        print("folders = [")
+        for i, folder in enumerate(folders):
+            if i == len(folders) - 1:  # Last item, no comma
+                print(f'    "{folder}"')
+            else:
+                print(f'    "{folder}",')
+        print("]")
+        
+        print("=" * 60)
+        print(f"📊 Total: {len(folders)} folders")
+        
+        return folders
+        
+    except Exception as e:
+        print(f"❌ Error listing folders: {e}")
+        return []
+
+
+def get_folders_as_python_dict():
+    """
+    Get all folders formatted as a Python dictionary that can be copied and pasted.
+    Groups folders by year-month for better organization.
+    """
+    print("🚀 GETTING FOLDERS AS PYTHON DICTIONARY")
+    print("=" * 60)
+    
+    try:
+        folders = list_folders(container_client)
+        
+        if not folders:
+            print("❌ No folders found in the container")
+            return {}
+        
+        print(f"📂 Found {len(folders)} folders")
+        
+        # Group folders by year-month pattern (YYYYMM)
+        folder_dict = {}
+        special_folders = []
+        
+        for folder in folders:
+            # Check if folder follows YYYYMMDD pattern
+            if len(folder) == 8 and folder.isdigit():
+                year_month = folder[:6]  # Extract YYYYMM
+                if year_month not in folder_dict:
+                    folder_dict[year_month] = []
+                folder_dict[year_month].append(folder)
+            else:
+                # Special folders (non-date folders)
+                special_folders.append(folder)
+        
+        print("\n📋 COPY THIS PYTHON DICTIONARY:")
+        print("=" * 60)
+        
+        print("folders_dict = {")
+        
+        # Print date-based folders grouped by month
+        for year_month in sorted(folder_dict.keys()):
+            month_folders = sorted(folder_dict[year_month])
+            year = year_month[:4]
+            month = year_month[4:6]
+            month_name = {
+                '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+                '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+                '09': 'September', '10': 'October', '11': 'November', '12': 'December'
+            }.get(month, f'Month{month}')
+            
+            print(f'    "{year_month}": [  # {month_name} {year}')
+            for i, folder in enumerate(month_folders):
+                if i == len(month_folders) - 1:  # Last item in this month
+                    print(f'        "{folder}"')
+                else:
+                    print(f'        "{folder}",')
+            print('    ],')
+        
+        # Print special folders if any
+        if special_folders:
+            print('    "special": [  # Non-date folders')
+            for i, folder in enumerate(sorted(special_folders)):
+                if i == len(special_folders) - 1:  # Last item
+                    print(f'        "{folder}"')
+                else:
+                    print(f'        "{folder}",')
+            print('    ]')
+        
+        print("}")
+        
+        print("\n📋 ALTERNATIVE: FLAT LIST FORMAT (for review_rating_selected_folders.py):")
+        print("=" * 60)
+        
+        # Print in the format used in review_rating_selected_folders.py
+        print("specific_folders = [")
+        
+        # Group by months for comments
+        for year_month in sorted(folder_dict.keys()):
+            month_folders = sorted(folder_dict[year_month])
+            year = year_month[:4]
+            month = year_month[4:6]
+            month_name = {
+                '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr',
+                '05': 'May', '06': 'Jun', '07': 'Jul', '08': 'Aug',
+                '09': 'Sep', '10': 'Oct', '11': 'Nov', '12': 'Dec'
+            }.get(month, f'M{month}')
+            
+            print(f'    # {month_name} {year}')
+            
+            # Print folders in groups of 6 per line for readability
+            for i in range(0, len(month_folders), 6):
+                line_folders = month_folders[i:i+6]
+                line = "    " + ", ".join(f'"{folder}"' for folder in line_folders)
+                if i + 6 < len(month_folders) or year_month != sorted(folder_dict.keys())[-1]:
+                    line += ","
+                print(line)
+            print()  # Empty line between months
+        
+        # Add special folders at the end
+        if special_folders:
+            print('    # Special folders')
+            line = "    " + ", ".join(f'"{folder}"' for folder in sorted(special_folders))
+            print(line)
+        
+        print("]")
+        
+        print("=" * 60)
+        print(f"📊 Total: {len(folders)} folders")
+        print(f"📅 Date folders: {sum(len(folders) for folders in folder_dict.values())}")
+        print(f"🔧 Special folders: {len(special_folders)}")
+        
+        return folder_dict
+        
+    except Exception as e:
+        print(f"❌ Error listing folders: {e}")
+        return {}
 
 
 def list_folders(container_client, prefix: str = ""):
@@ -92,205 +275,167 @@ def count_files_in_folder(folder_name: str) -> int:
     return sum(1 for _ in blob_list)
 
 
+def count_all_output_files():
+    """
+    Count all files in output folders across the entire container.
+    Returns detailed breakdown by folder and total count.
+    """
+    print("🔍 Scanning container for output files...")
+    
+    # Counter
+    total_output_files = 0
+    folder_counts = defaultdict(int)
+    output_folders = set()
+    scanned_count = 0
+    
+    # Scan all blobs in container with progress indicator
+    try:
+        for blob in container_client.list_blobs():
+            scanned_count += 1
+            if scanned_count % 1000 == 0:
+                print(f"   Scanned {scanned_count} files...")
+            
+            blob_name = blob.name
+            
+            # Case 1: Any folder with "/output/" in the path
+            if "/output/" in blob_name:
+                # Extract the parent folder (first part of path)
+                folder = blob_name.split("/")[0]
+                folder_counts[folder] += 1
+                total_output_files += 1
+                output_folders.add(f"{folder}/output/")
+            
+            # Case 2: Special handling for specific output folders
+            elif (blob_name.startswith("latest_full_release/") or 
+                  blob_name.startswith("AI-review-rating-output01/") or
+                  blob_name.startswith("AI-data-extract-output/") or
+                  blob_name.startswith("latest_full_release_review-rating/")):
+                folder = blob_name.split("/")[0]
+                folder_counts[folder] += 1
+                total_output_files += 1
+                output_folders.add(folder)
+    
+    except Exception as e:
+        print(f"❌ Error scanning container: {e}")
+        return 0, {}, set()
+    
+    print(f"   ✅ Scanned {scanned_count} total files")
+    
+    # Print detailed breakdown
+    print("\n📊 OUTPUT FILES BREAKDOWN:")
+    print("=" * 60)
+    
+    if folder_counts:
+        for folder, count in sorted(folder_counts.items()):
+            print(f"📂 {folder:<40} : {count:>6} files")
+    else:
+        print("❌ No output files found!")
+    
+    print("=" * 60)
+    print(f"📈 TOTAL OUTPUT FILES: {total_output_files}")
+    print(f"📁 TOTAL OUTPUT FOLDERS: {len(output_folders)}")
+    
+    return total_output_files, folder_counts, output_folders
 
-container_client = ContainerClient.from_connection_string(
-    conn_str=AZURE_STORAGE_CONNECTION_STRING,
-    container_name=AZURE_BLOB_CONTAINER_NAME
-)
-keywords = ["Foot", "Ankle", "Plate", "Screws", "Screw", "Knee", "Hip"]
 
-# Folder prefix to restrict search
-folder_prefix = "latest_full_release/"
+def count_files_by_keywords(keywords=None, folder_prefix=""):
+    """
+    Count files matching specific keywords in their names.
+    """
+    if keywords is None:
+        keywords = ["Foot", "Ankle", "Plate", "Screws", "Screw", "Knee", "Hip"]
+    
+    print(f"🔍 Searching for files with keywords: {keywords}")
+    if folder_prefix:
+        print(f"📂 Restricting search to folder: {folder_prefix}")
+    
+    count = 0
+    matching_files = []
+    
+    # List blobs with optional folder prefix
+    blob_iterator = container_client.list_blobs(name_starts_with=folder_prefix)
+    
+    for blob in blob_iterator:
+        if any(keyword.lower() in blob.name.lower() for keyword in keywords):
+            matching_files.append(blob.name)
+            count += 1
+    
+    print(f"\n📊 Found {count} files matching keywords")
+    
+    # Show first few matches as examples
+    if matching_files:
+        print("\n📋 Sample matches:")
+        for i, file in enumerate(matching_files[:5]):
+            print(f"   {i+1}. {file}")
+        if len(matching_files) > 5:
+            print(f"   ... and {len(matching_files) - 5} more files")
+    
+    return count, matching_files
 
-count = 0
-# print("Matching files inside 'latest_full_release':\n")
 
-# List only blobs within the folder
-for blob in container_client.list_blobs(name_starts_with=folder_prefix):
-    if any(keyword.lower() in blob.name.lower() for keyword in keywords):
-        # print(blob.name)
-        count += 1
-
-print("\n📂📂Total matching files:", count)
-
-
-# # Counter
-# total_output_files = 0
-# folder_counts = defaultdict(int)
-
-# for blob in container_client.list_blobs():
-#     blob_name = blob.name
-
-#     # Case 1: Any "output/" folder file
-#     if "/output/" in blob_name:
-#         # Extract the parent folder (first part of path)
-#         folder = blob_name.split("/")[0]
-#         folder_counts[folder] += 1
-#         total_output_files += 1
-
-#     # Case 2: Special handling for "latest_full_release"
-#     elif blob_name.startswith("latest_full_release/"):
-#         folder_counts["latest_full_release"] += 1
-#         total_output_files += 1
-
-# # Print breakdown
-# for folder, count in folder_counts.items():
-#     print(f"📂 {folder}: {count} output files")
-
-# print(f"\n📊 Total files in ALL output folders (including latest_full_release): {total_output_files}")
 
 if __name__ == "__main__":
-    folders1 = ['AI-review-rating-output01']  # have 15 files
-    folders = ['AI-data-extract-output/latest_full_release_data-extract']  # have 15 files
-    folders2 = ['latest_full_release_review-rating']  # have 15 files
-    folders3 = ['latest_full_release']  # have 15 files
+    print("Azure Blob Container Analysis")
+    print("=" * 50)
 
-    top_folders = list_folders(container_client)
-    print("Top level folders:", top_folders)
-
-    # for folder in folders3:
-    #     count = count_files_in_folder(folder)
-    #     print(f"📂 {folder}: {count} files")
-
-    # for folder in folders1:
-    #     count = count_files_in_folder(folder)
-    #     print(f"📂 {folder}: {count} files")
-
-    # for folder in folders:
-    #     count = count_files_in_folder(folder)
-    #     print(f"📂 {folder}: {count} files")
-
-    # for folder in folders2:
-    #     count = count_files_in_folder(folder)
-    #     print(f"📂 {folder}: {count} files")
-
-
-    # for folder in folders:
-    #     download_all_output_files(folder, download_dir="downloads")
-
+    if len(sys.argv) > 1 and sys.argv[1] == "--folders":
+        list_all_folders()
+        sys.exit(0)
+    elif len(sys.argv) > 1 and sys.argv[1] == "--python-list":
+        get_folders_as_python_list()
+        sys.exit(0)
+    elif len(sys.argv) > 1 and sys.argv[1] == "--python-dict":
+        get_folders_as_python_dict()
+        sys.exit(0)
     
-    # # List subfolders under a given folder
-    # subfolders = list_folders(container_client, prefix="AI-review-rating-output01")
-    # print("Subfolders inside '20250915':", subfolders)
+    # First, let's check specific known output folders quickly
+    print("📂 CHECKING SPECIFIC OUTPUT FOLDERS:")
+    specific_folders = [
+        'AI-review-rating-output01',
+        'AI-data-extract-output', 
+        'latest_full_release',
+        'latest_full_release_review-rating'
+    ]
+    
+    total_specific = 0
+    for folder in specific_folders:
+        try:
+            count = count_files_in_folder(folder)
+            print(f"   📂 {folder:<35} : {count:>6} files")
+            total_specific += count
+        except Exception as e:
+            print(f"   ❌ {folder:<35} : Error - {e}")
+    
+    print(f"   📊 Total in specific folders: {total_specific}")
+    
+    # Now do the comprehensive scan
+    print("\n" + "=" * 50)
+    total_files, folder_breakdown, output_folders = count_all_output_files()
+    
+    # Show ALL top level folders
+    print("\n📁 ALL TOP LEVEL FOLDERS:")
+    try:
+        top_folders = list_folders(container_client)
+        print(f"Found {len(top_folders)} top-level folders")
+        print("=" * 60)
+        
+        # Display all folders in a neat format
+        for i, folder in enumerate(top_folders, 1):
+            print(f"   {i:3d}. {folder}")
+            
+        print("=" * 60)
+        print(f"📊 Total folders: {len(top_folders)}")
+        
+    except Exception as e:
+        print(f"❌ Error listing folders: {e}")
+    
+    # Summary
+    print("\n" + "=" * 50)
+    print("📊 FINAL SUMMARY:")
+    print(f"   • Total output files (comprehensive): {total_files}")
+    print(f"   • Total in specific folders: {total_specific}")
+    print(f"   • Output folders found: {len(output_folders)}")
+    
+    if folder_breakdown:
+        print(f"   • Largest output folder: {max(folder_breakdown.items(), key=lambda x: x[1])}")
 
-    # # List files
-    # for folder in folders:
-    #     list_files_in_folder(folder)
-
-    # Upload file
-    # create_folder_and_upload_file(folder, file_to_upload)
-
-
-# Top level folders: [
-# '20250211', '20250212', '20250213', '20250214', '20250217', '20250218', '20250219', '20250220', '20250221', '20250224', '20250225', '20250226', '20250227', '20250228', 
-# '20250303', '20250304', '20250305', '20250306', '20250307', '20250310', '20250311', '20250312', '20250313', '20250314', '20250317', '20250318', '20250319', '20250320', '20250321', '20250324', '20250325', '20250326', '20250327', '20250328', '20250331', 
-# '20250401', '20250402', '20250403', '20250404', '20250407', '20250408', '20250409', '20250410', '20250411', '20250414', '20250415', '20250416', '20250417', '20250418', '20250421', '20250422', '20250423', '20250424', '20250425', '20250428', '20250429', '20250430', 
-
-# '20250502', '20250505', '20250506', '20250507', '20250508', '20250509', '20250512', '20250513', '20250514', '20250515', '20250516', '20250519', '20250520', '20250521', '20250522', '20250523', '20250526', '20250527', '20250528', '20250529', '20250530', 
-# '20250602', '20250603', '20250604', '20250605', '20250606', '20250609', '20250610', '20250611', '20250612', '20250613', '20250617', '20250618', '20250620', '20250623', '20250624', '20250625', '20250626', '20250627', 
-
-# '20250701', '20250703', '20250704', '20250707', '20250708', '20250709', '20250710', '20250711', '20250714', '20250715', '20250716', '20250717', '20250718', '20250721', '20250722', '20250723', '20250724', '20250725', '20250728', '20250729', '20250730', '20250731',
-#  
-# '20250804', '20250805', '20250806', '20250807', '20250808', '20250811', '20250812', '20250813', '20250814', '20250815', '20250818', '20250819', '20250820', '20250821', '20250822', '20250825', '20250826', '20250827', '20250828', '20250829', 
-
-# '20250902', '20250903', '20250904', '20250905', '20250908', '20250909', '20250910', '20250911', '20250912', '20250915', '20250916', '20250917', '20250919', '20250922', '20250923', '20250925', '20250926', '20250929', '20250930', 
-# 
-# '20251002', '20251003', '20251006', '20251007',
-# 
-#  'AI-data-extract-output', 'AI-review-rating-output01', 'latest_full_release', 'latest_full_release_review-rating']
-
-
-
-
-
-# Request for Salary Revision
-
-# Dear Management Team,
-
-# I hope this email finds you well.
-
-# I am writing to kindly request a revision of my current salary. At present, my salary is ₹8,000, which is quite minimal, and after monthly deductions, very little remains at hand
-
-
-# When I joined the company, I had limited knowledge and therefore kept my salary expectations low.
-# At that time, I think salary will increase after the probation period. 
-
-
-
-
-
-# import os
-# from azure.storage.blob import BlobServiceClient
-# from dotenv import load_dotenv
-
-# load_dotenv()
-
-# AZURE_STORAGE_CONNECTION_STRING = "InstrumentationKey=016f36c5-d29b-4fb8-9765-ac01532bfcef;IngestionEndpoint=https://eastus2-3.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus2.livediagnostics.monitor.azure.com/;ApplicationId=ae0d9508-7385-4956-9076-df6419d6356b"
-# # Load connection string and container name from env
-# # AZURE_STORAGE_CONNECTION_STRING = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
-# # AZURE_BLOB_CONTAINER_NAME = os.getenv("AZURE_BLOB_CONTAINER_NAME")
-
-# # Create blob service client
-# blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
-
-# # Get container client
-# container_client = blob_service_client.get_container_client("surgzondata")
-
-
-# # def create_folder_and_upload_file(folder_name: str, file_path: str, blob_name: str = None):
-# #     """
-# #     Upload a file into a 'folder' inside the container.
-# #     Azure Blob doesn't have real folders, we simulate using prefix: folder/file.txt
-# #     """
-# #     if not blob_name:
-# #         blob_name = os.path.basename(file_path)
-
-# #     # Full path in blob = folder_name/file_name
-# #     blob_path = f"{folder_name}/{blob_name}"
-
-# #     blob_client = container_client.get_blob_client(blob_path)
-# #     with open(file_path, "rb") as data:
-# #         blob_client.upload_blob(data, overwrite=True)
-
-# #     print(f"Uploaded {file_path} to {blob_path}")
-
-
-# def list_files_in_folder(folder_name: str):
-#     """
-#     List all blobs with a given prefix (simulating a folder).
-#     """
-#     print(f"Files in folder '{folder_name}':")
-#     blob_list = container_client.list_blobs(name_starts_with=folder_name + "/")
-#     for blob in blob_list:
-#         print(f"- {blob.name}")
-
-
-# # def download_file(folder_name: str, blob_name: str, download_path: str):
-# #     """
-# #     Download a blob (file) from the folder to local path.
-# #     """
-# #     blob_path = f"{folder_name}/{blob_name}"
-# #     blob_client = container_client.get_blob_client(blob_path)
-
-# #     with open(download_path, "wb") as f:
-# #         data = blob_client.download_blob()
-# #         f.write(data.readall())
-
-# #     print(f"Downloaded {blob_path} to {download_path}")
-
-
-# if __name__ == "__main__":
-#     # Example usage
-#     folder = "20250915"
-#     # file_to_upload = "example.txt"
-
-#     # Upload file
-#     # create_folder_and_upload_file(folder, file_to_upload)
-
-#     # List files
-#     list_files_in_folder(folder)
-
-#     # Download file back
-#     # download_file(folder, "example.txt", "downloaded_example.txt")
-
- 

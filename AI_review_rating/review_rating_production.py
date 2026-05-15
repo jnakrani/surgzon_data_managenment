@@ -17,31 +17,22 @@ AZURE_BLOB_CONTAINER_NAME = os.getenv("AZURE_BLOB_CONTAINER_NAME")
 blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
 container_client = blob_service_client.get_container_client(AZURE_BLOB_CONTAINER_NAME)
 
-
-try:
-    import google.generativeai as genai
-except Exception:
-    genai = None
-
-if not genai:
-    raise RuntimeError("google.generativeai not installed or importable in this environment.")
-
 API_KEYS = [
-    # os.getenv("GEMINI_API_KEY_CLIENT"),
-    os.getenv("GEMINI_API_KEY1"),
-    os.getenv("GEMINI_API_KEY2"),
-    os.getenv("GEMINI_API_KEY3"),
-    os.getenv("GEMINI_API_KEY4"),
-    os.getenv("GEMINI_API_KEY5"),
-    os.getenv("GEMINI_API_KEY6"),
+    os.getenv("GEMINI_API_KEY_CLIENT"),
+    # os.getenv("GEMINI_API_KEY1"),
+    # os.getenv("GEMINI_API_KEY2"),
+    # os.getenv("GEMINI_API_KEY3"),
+    # os.getenv("GEMINI_API_KEY4"),
+    # os.getenv("GEMINI_API_KEY5"),
+    # os.getenv("GEMINI_API_KEY6"),
 
-    os.getenv("GEMINI_API_KEY7"),
-    os.getenv("GEMINI_API_KEY8"),
-    os.getenv("GEMINI_API_KEY9"),
-    os.getenv("GEMINI_API_KEY10"),
-    os.getenv("GEMINI_API_KEY11"),
-    os.getenv("GEMINI_API_KEY12"),
-    os.getenv("GEMINI_API_KEY13"),
+    os.getenv("GEMINI_API_KEY14"),
+    os.getenv("GEMINI_API_KEY15"),
+    os.getenv("GEMINI_API_KEY16"),
+    os.getenv("GEMINI_API_KEY17"),
+    os.getenv("GEMINI_API_KEY18"),
+    os.getenv("GEMINI_API_KEY19"),
+    os.getenv("GEMINI_API_KEY20"),
 ]
 api_key_cycle = cycle(API_KEYS)
 current_api_key = next(api_key_cycle)
@@ -106,72 +97,6 @@ def call_gemini(prompt_text, max_attempts: int = 3):
                     raise e
 
     raise RuntimeError("All Gemini API keys/models exhausted after retries.")
-
-
-# API_KEYS = [
-#     os.getenv("GEMINI_API_KEY1"),
-#     os.getenv("GEMINI_API_KEY2"),
-#     os.getenv("GEMINI_API_KEY3"),
-#     os.getenv("GEMINI_API_KEY4"),
-#     os.getenv("GEMINI_API_KEY5"),
-#     os.getenv("GEMINI_API_KEY6"),
-#     # os.getenv("GEMINI_API_KEY7"),
-#     # os.getenv("GEMINI_API_KEY8"),
-#     # os.getenv("GEMINI_API_KEY9"),
-#     # os.getenv("GEMINI_API_KEY10"),
-#     # os.getenv("GEMINI_API_KEY11"),
-#     # os.getenv("GEMINI_API_KEY12"),
-
-#     # os.getenv("GEMINI_API_KEY21"),
-#     # os.getenv("GEMINI_API_KEY22"),
-#     # os.getenv("GEMINI_API_KEY23"),
-#     # os.getenv("GEMINI_API_KEY24"),
-#     # os.getenv("GEMINI_API_KEY25"),
-#     # os.getenv("GEMINI_API_KEY26"),
-#     # os.getenv("GEMINI_API_KEY27"),
-#     # os.getenv("GEMINI_API_KEY28"),
-# ]
-
-# # Iterator to cycle through keys
-# api_key_cycle = cycle(API_KEYS)
-# current_api_key = next(api_key_cycle)
-
-# def configure_gemini(api_key: str):
-#     """Configure Gemini with the given API key."""
-#     genai.configure(api_key=api_key)
-#     logger.info(f"Configured Gemini with API key ending in {api_key[-4:]}")
-
-# # Initial configuration
-# configure_gemini(current_api_key)
-
-# def call_gemini(prompt: str, retries: int = len(API_KEYS)):
-#     """
-#     Call Gemini API with automatic fallback to next API key if quota exceeded.
-#     """
-#     global current_api_key
-    
-#     for attempt in range(retries):
-#         try:
-#             model = genai.GenerativeModel("gemini-2.5-flash-lite")
-#             response = model.generate_content(prompt)
-#             return response.text
-        
-#         except Exception as e:
-#             error_msg = str(e).lower()
-            
-#             if "quota" in error_msg or "429" in error_msg or "exceeded" in error_msg:
-#                 logger.warning(f"Quota exceeded for key ending in {current_api_key[-4:]}. Switching to next key...")
-#                 current_api_key = next(api_key_cycle)
-#                 configure_gemini(current_api_key)
-#             else:
-#                 logger.error(f"Unexpected error: {e}")
-#                 raise e
-    
-#     raise RuntimeError("All Gemini API keys exhausted. Please add more keys.")
-
-# # ---------------- Gemini Setup ----------------
-# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-# genai.configure(api_key=GEMINI_API_KEY)
 
 orthopedic_user_review_phrases_varied = [
     "Recovery progress became smoother with",
@@ -240,8 +165,6 @@ orthopedic_user_review_phrases_varied = [
     "Confidence in long-term recovery increased through",
 ]
 
-# total_tokens_used = 0
-
 def generate_review(product_name, description):
     start_phrase = random.choice(orthopedic_user_review_phrases_varied)
 
@@ -273,30 +196,21 @@ def generate_review(product_name, description):
     while True:
         try:
             start_row = time.time()
-            # model = genai.GenerativeModel("gemini-2.0-flash-lite") # gemini-2.5-flash-lite gemini-2.0-flash
             prompt = f"{system}\n\n" + user_template.format(
                 start_phrase=start_phrase,
                 product_name=product_name,
                 description=description
             )
 
-            # response = model.generate_content(prompt)
             review_text = call_gemini(prompt).strip()
-
 
             word_count = len(review_text.split())
             logger.info(f"📝 Generated review word count: {word_count}")
 
-            # # Count tokens used
-            # if hasattr(response, "usage_metadata") and response.usage_metadata:
-            #     tokens = response.usage_metadata.total_token_count
-            #     total_tokens_used += tokens
-            #     print(f"   📊 Tokens used this row: {tokens}, Total so far: {total_tokens_used}")
-
             end_row = time.time()
             logger.info(f"  ⏱️ Time taken for this row: {end_row - start_row:.2f} seconds")
 
-            sleep_time = random.uniform(2, 5) 
+            sleep_time = random.uniform(1, 2) 
             logger.info(f"      😴Sleeping {sleep_time:.2f} seconds...")
             time.sleep(sleep_time)
 
@@ -330,11 +244,7 @@ def generate_rating(review):
 
     while True:
         try:
-            start_row = time.time() 
-            # model = genai.GenerativeModel("gemini-2.0-flash-lite")
-            # response = model.generate_content(rating_prompt)
-            # rating_text = response.text.strip()
-
+            start_row = time.time()
             rating_text = call_gemini(rating_prompt).strip()
 
             # Extract number only (ensure it's valid 1–5)
@@ -348,16 +258,10 @@ def generate_rating(review):
             word_count = len(review.split())
             logger.info(f"⭐ Generated rating: {rating} (Review word count: {word_count})")
 
-            # # Count tokens (if available from API)
-            # if hasattr(response, "usage_metadata") and response.usage_metadata:
-            #     tokens = response.usage_metadata.total_token_count
-            #     total_tokens_used += tokens
-            #     logger.info(f"   📊 Tokens used: {tokens}, Total so far: {total_tokens_used}")
-
             end_row = time.time()
             logger.info(f"  ⏱️ Time taken for rating: {end_row - start_row:.2f} seconds")
 
-            sleep_time = random.uniform(2, 5)
+            sleep_time = random.uniform(1, 2)
             logger.info(f"      😴 Sleeping {sleep_time:.2f} seconds...")
             time.sleep(sleep_time)
 
@@ -368,12 +272,202 @@ def generate_rating(review):
             time.sleep(25)
 
 
+def check_processed_files(allowed_folders=None, process_all_files=True):
+    """
+    Check which files are already processed and which need processing.
+    Returns summary statistics without processing anything.
+    """
+    logger.info("🔍 Checking file processing status...")
+    
+    if allowed_folders is None:
+        allowed_folders = []
+
+    keywords = ["Foot", "Ankle", "Plate", "Screws", "Knee", "Hip", "Screw"]
+    
+    total_files = 0
+    fully_processed = 0
+    partially_processed = 0
+    not_started = 0
+    
+    processed_files_list = []
+    partial_files_list = []
+    unprocessed_files_list = []
+    
+    for blob in container_client.list_blobs():
+        # Only process CSV and XLSX files
+        if not (blob.name.endswith(".csv") or blob.name.endswith(".xlsx")):
+            continue
+
+        # Check allowed folders
+        if not any(blob.name.startswith(f"{folder}/") for folder in allowed_folders):
+            continue
+
+        # Apply keyword filtering only if process_all_files=False
+        if not process_all_files:
+            filename = os.path.basename(blob.name)
+            if not any(kw.lower() in filename.lower() for kw in keywords):
+                continue
+
+        total_files += 1
+        
+        # Check processing status
+        folder_name = blob.name.split("/")[0]
+        output_folder = f"AI-review-rating-output01/{folder_name}_review-rating/"
+        output_blob_name = f"{output_folder}{os.path.basename(blob.name).replace('.csv', '-AI-Review&Rating.csv')}"
+        
+        try:
+            output_blob_client = container_client.get_blob_client(output_blob_name)
+            existing_data = output_blob_client.download_blob().readall()
+            df_existing = pd.read_csv(StringIO(existing_data.decode("utf-8")))
+            
+            # Count completed rows
+            completed_rows = df_existing[
+                (df_existing["AI_review"].notna()) & (df_existing["AI_review"].astype(str).str.strip() != "") &
+                (df_existing["AI_rating"].notna()) & (df_existing["AI_rating"].astype(str).str.strip() != "")
+            ].shape[0]
+            
+            total_rows = len(df_existing)
+            
+            if completed_rows == total_rows:
+                fully_processed += 1
+                processed_files_list.append(f"{blob.name} ({completed_rows}/{total_rows} rows)")
+            else:
+                partially_processed += 1
+                partial_files_list.append(f"{blob.name} ({completed_rows}/{total_rows} rows)")
+                
+        except Exception:
+            not_started += 1
+            unprocessed_files_list.append(blob.name)
+    
+    # Print summary
+    logger.info(f"\n📊 FILE PROCESSING STATUS SUMMARY:")
+    logger.info(f"=" * 60)
+    logger.info(f"📂 Total files found: {total_files}")
+    logger.info(f"✅ Fully processed: {fully_processed}")
+    logger.info(f"🔄 Partially processed: {partially_processed}")
+    logger.info(f"❌ Not started: {not_started}")
+    logger.info(f"🎯 Files needing work: {partially_processed + not_started}")
+    
+    if fully_processed > 0:
+        logger.info(f"\n✅ FULLY PROCESSED FILES ({fully_processed}):")
+        for file in processed_files_list[:10]:  # Show first 10
+            logger.info(f"   - {file}")
+        if len(processed_files_list) > 10:
+            logger.info(f"   ... and {len(processed_files_list) - 10} more files")
+    
+    if partially_processed > 0:
+        logger.info(f"\n🔄 PARTIALLY PROCESSED FILES ({partially_processed}):")
+        for file in partial_files_list:
+            logger.info(f"   - {file}")
+    
+    if not_started > 0:
+        logger.info(f"\n❌ NOT STARTED FILES ({not_started}):")
+        for file in unprocessed_files_list[:10]:  # Show first 10
+            logger.info(f"   - {file}")
+        if len(unprocessed_files_list) > 10:
+            logger.info(f"   ... and {len(unprocessed_files_list) - 10} more files")
+    
+    logger.info(f"=" * 60)
+    
+    return {
+        'total_files': total_files,
+        'fully_processed': fully_processed,
+        'partially_processed': partially_processed,
+        'not_started': not_started,
+        'processed_files': processed_files_list,
+        'partial_files': partial_files_list,
+        'unprocessed_files': unprocessed_files_list
+    }
+
+
+def list_files_to_process(allowed_folders=None, process_all_files=True):
+    """
+    List all files that would be processed without actually processing them.
+    Useful for preview before running the main process.
+    """
+    logger.info("📋 Listing files that would be processed...")
+    
+    if allowed_folders is None:
+        allowed_folders = []
+
+    keywords = ["Foot", "Ankle", "Plate", "Screws", "Knee", "Hip", "Screw"]
+    
+    all_files = []
+    processed_files = []
+    unprocessed_files = []
+    
+    for blob in container_client.list_blobs():
+        # Only process CSV and XLSX files
+        if not (blob.name.endswith(".csv") or blob.name.endswith(".xlsx")):
+            continue
+
+        # Check allowed folders
+        if not any(blob.name.startswith(f"{folder}/") for folder in allowed_folders):
+            continue
+
+        # Apply keyword filtering only if process_all_files=False
+        if not process_all_files:
+            filename = os.path.basename(blob.name)
+            if not any(kw.lower() in filename.lower() for kw in keywords):
+                continue
+
+        all_files.append(blob.name)
+        
+        # Check if already processed
+        folder_name = blob.name.split("/")[0]
+        output_folder = f"AI-review-rating-output01/{folder_name}_review-rating/"
+        output_blob_name = f"{output_folder}{os.path.basename(blob.name).replace('.csv', '-AI-Review&Rating.csv')}"
+        
+        try:
+            output_blob_client = container_client.get_blob_client(output_blob_name)
+            existing_data = output_blob_client.download_blob().readall()
+            df_out = pd.read_csv(StringIO(existing_data.decode("utf-8")))
+            
+            # Check if fully processed
+            completed_rows = df_out[
+                (df_out["AI_review"].notna()) & (df_out["AI_review"].astype(str).str.strip() != "") &
+                (df_out["AI_rating"].notna()) & (df_out["AI_rating"].astype(str).str.strip() != "")
+            ].shape[0]
+            
+            if completed_rows == len(df_out):
+                processed_files.append(blob.name)
+            else:
+                unprocessed_files.append(f"{blob.name} ({completed_rows}/{len(df_out)} rows done)")
+                
+        except Exception:
+            unprocessed_files.append(f"{blob.name} (not started)")
+    
+    logger.info(f"\n📊 File Processing Summary:")
+    logger.info(f"   📂 Total files found: {len(all_files)}")
+    logger.info(f"   ✅ Already processed: {len(processed_files)}")
+    logger.info(f"   🔄 Need processing: {len(unprocessed_files)}")
+    
+    if processed_files:
+        logger.info(f"\n✅ Already Processed Files:")
+        for file in processed_files:
+            logger.info(f"   - {file}")
+    
+    if unprocessed_files:
+        logger.info(f"\n🔄 Files Needing Processing:")
+        for file in unprocessed_files:
+            logger.info(f"   - {file}")
+    
+    return {
+        'all_files': all_files,
+        'processed_files': processed_files,
+        'unprocessed_files': unprocessed_files
+    }
+
+
 def process_container_files(
     output_prefix="AI-review-rating-output01/",
-    allowed_folders=None
+    allowed_folders=None,
+    process_all_files=True
 ):
     """
-    Process only files from specific folders in Azure blob storage.
+    Process files from specific folders in Azure blob storage.
+    - If process_all_files=True: Process ALL CSV/XLSX files in allowed folders
+    - If process_all_files=False: Only process files with specific keywords
     - Saves into structure:
       AI-review-rating-output01/{date}_review-rating/<file>-AI-Review&Rating.csv
     """
@@ -386,10 +480,12 @@ def process_container_files(
     file_count = 0
     row_count_total = 0
 
+    # Keywords for filtering (only used if process_all_files=False)
     keywords = ["Foot", "Ankle", "Plate", "Screws", "Knee", "Hip", "Screw"]
 
     blobs = []
     for blob in container_client.list_blobs():
+        # Only process CSV and XLSX files
         if not (blob.name.endswith(".csv") or blob.name.endswith(".xlsx")):
             continue
 
@@ -397,13 +493,18 @@ def process_container_files(
         if not any(blob.name.startswith(f"{folder}/") for folder in allowed_folders):
             continue
 
-        filename = os.path.basename(blob.name)
-        if not any(kw.lower() in filename.lower() for kw in keywords):
-            continue
+        # ✅ Apply keyword filtering only if process_all_files=False
+        if not process_all_files:
+            filename = os.path.basename(blob.name)
+            if not any(kw.lower() in filename.lower() for kw in keywords):
+                continue
 
         blobs.append(blob)
 
-    logger.info(f"📂 Found {len(blobs)} matching files in {allowed_folders}")
+    if process_all_files:
+        logger.info(f"📂 Found {len(blobs)} files (ALL CSV/XLSX) in {allowed_folders}")
+    else:
+        logger.info(f"📂 Found {len(blobs)} files with keywords {keywords} in {allowed_folders}")
 
     for blob in blobs:
         # --- extract folder name (e.g. 20250402) ---
@@ -421,6 +522,26 @@ def process_container_files(
         logger.info(f"\n📂 Processing file: {blob.name}")
         logger.info(f"📂 Saving results to: {output_blob_name}")
 
+        # ✅ FIRST: Check if file is already fully processed BEFORE downloading
+        try:
+            existing_data = output_blob_client.download_blob().readall()
+            df_existing = pd.read_csv(StringIO(existing_data.decode("utf-8")))
+            
+            # Check if all rows are completed
+            completed_rows = df_existing[
+                (df_existing["AI_review"].notna()) & (df_existing["AI_review"].astype(str).str.strip() != "") &
+                (df_existing["AI_rating"].notna()) & (df_existing["AI_rating"].astype(str).str.strip() != "")
+            ].shape[0]
+            
+            if completed_rows == len(df_existing):
+                logger.info(f"⏩ Skipping...✅ File already fully processed: {blob.name} ({completed_rows}/{len(df_existing)} rows completed)")
+                continue
+            else:
+                logger.info(f"🔄 File partially processed: {blob.name} ({completed_rows}/{len(df_existing)} rows completed)")
+                
+        except Exception:
+            logger.info(f"➡️ Output file not found, starting fresh for {blob.name}")
+
         # --- download original file ---
         blob_client = container_client.get_blob_client(blob.name)
         data = blob_client.download_blob().readall()
@@ -436,12 +557,12 @@ def process_container_files(
         if "AI_rating" not in df.columns:
             df["AI_rating"] = ""
 
-        # Resume support
+        # Resume support - merge existing progress
         try:
             existing_data = output_blob_client.download_blob().readall()
             df_out = pd.read_csv(StringIO(existing_data.decode("utf-8")))
-            logger.info(f"🔄 Resuming {blob.name} ({len(df_out)} rows already processed)")
-
+            
+            # Merge existing AI_review and AI_rating data
             for col in ["AI_review", "AI_rating"]:
                 if col in df_out.columns:
                     df[col] = df_out[col]
@@ -451,14 +572,10 @@ def process_container_files(
                 (df["AI_rating"].notna()) & (df["AI_rating"].astype(str).str.strip() != "")
             ].shape[0]
 
-            if completed_rows == len(df):
-                logger.info(f"⏩ Skipping...✅ File already fully processed: {blob.name}")
-                continue
-
             logger.info(f"🔄 Resuming {blob.name} ({completed_rows}/{len(df)} rows already processed)")
 
         except Exception:
-            logger.info(f"➡️ Starting fresh for {blob.name}")
+            logger.info(f"➡️ Starting fresh processing for {blob.name}")
 
         row_count = len(df)
         row_count_total += row_count
@@ -506,17 +623,83 @@ def process_container_files(
     logger.info(f"📑 Total rows processed: {row_count_total}")
 
 
-if __name__ == "__main__":
-    allowed_folders = [
-        # '20251002', '20251003', '20251006', '20251007', 
-        # '20251119', '20251121', '20251124', '20251125', '20251128', 
-        # '20251201', '20251202', '20251203',
-        '20251203', '20251205', '20251208', '20251209', '20251210', '20251211', 
-        '20251212', '20251215', '20251216', '20251217', '20251218',
-    ] 
+def run_automated_processing():
+    """
+    Run processing with folders automatically fetched by cronjob.
+    This function is called when folders are updated by the cronjob system.
+    """
+    logger.info("🤖 Running automated processing with cronjob-fetched folders...")
+    
+    # First, show a quick status check
+    status = check_processed_files(
+        allowed_folders=allowed_folders,
+        process_all_files=True
+    )
+    
+    if status['fully_processed'] + status['partially_processed'] + status['not_started'] == 0:
+        logger.info("❌ No files found to process!")
+        return
+    
+    logger.info(f"\n🎯 Will process {status['partially_processed'] + status['not_started']} files")
+    logger.info(f"⏩ Will skip {status['fully_processed']} already completed files")
+    
+    # Proceed with processing
     process_container_files(
         output_prefix="AI-review-rating-output01/",
-        allowed_folders=allowed_folders
+        allowed_folders=allowed_folders,
+        process_all_files=True  # 🔥 Process ALL files (not just keyword files)
     )
-    # '20250701', '20250703', '20250704', '20250707', '20250708', '20250709', '20250710', '20250711', '20250714', '20250715', '20250716', 
-    # '20250717', '20250718', '20250721', '20250722', '20250723', '20250724', '20250725', '20250728', '20250729', '20250730', '20250731', 
+
+
+if __name__ == "__main__":
+    # 🤖 CRONJOB-UPDATED FOLDERS - DO NOT MODIFY MANUALLY
+    # This list is automatically updated by cronjob_folder_fetcher.py
+    allowed_folders = [
+        '20250602', '20250603', '20250604', '20250605', '20250606', '20250609', 
+        '20250610', '20250611', '20250612', '20250613', '20250617', '20250618', 
+        '20250620', '20250623', '20250624', '20250625', '20250626', '20250627',
+    ]
+    
+    # 🔍 Options for running the script
+    check_status_only = False  # Set to True to only check processing status
+    preview_only = False       # Set to True to preview files that will be processed
+    run_automated = False      # Set to True to run with cronjob-fetched folders
+    
+    if check_status_only:
+        # Just check and display processing status
+        check_processed_files(
+            allowed_folders=allowed_folders,
+            process_all_files=True
+        )
+    elif preview_only:
+        # Preview files before processing
+        list_files_to_process(
+            allowed_folders=allowed_folders,
+            process_all_files=True
+        )
+    elif run_automated:
+        # Run automated processing (typically called after cronjob updates folders)
+        run_automated_processing()
+    else:
+        # Run the actual processing (with improved file skipping)
+        logger.info("🚀 Starting AI Review & Rating Generation with Enhanced File Skipping")
+        logger.info("=" * 70)
+        
+        # First, show a quick status check
+        status = check_processed_files(
+            allowed_folders=allowed_folders,
+            process_all_files=True
+        )
+        
+        if status['fully_processed'] + status['partially_processed'] + status['not_started'] == 0:
+            logger.info("❌ No files found to process!")
+        else:
+            logger.info(f"\n🎯 Will process {status['partially_processed'] + status['not_started']} files")
+            logger.info(f"⏩ Will skip {status['fully_processed']} already completed files")
+            
+            # Proceed with processing
+            process_container_files(
+                output_prefix="AI-review-rating-output01/",
+                allowed_folders=allowed_folders,
+                process_all_files=True  # 🔥 Process ALL files (not just keyword files)
+            ) 

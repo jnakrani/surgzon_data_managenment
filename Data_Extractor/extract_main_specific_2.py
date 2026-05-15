@@ -3,8 +3,6 @@ import os
 import random
 import re
 import json
-from queue import Queue
-from threading import Thread
 import time
 
 import pandas as pd
@@ -12,7 +10,6 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from io import StringIO, BytesIO
 from azure.storage.blob import BlobServiceClient
-# from perplexity import Perplexity
 
 
 load_dotenv()
@@ -55,7 +52,6 @@ PARSED_FIELDS = [
     "dimensions", "other", "color"
 ]
 
-# --- Gemini client (google.generativeai) example usage ---
 try:
     import google.generativeai as genai
 except Exception:
@@ -63,8 +59,8 @@ except Exception:
 
 if not genai:
     raise RuntimeError("google.generativeai not installed or importable in this environment.")
-
 API_KEYS = [
+    os.getenv("GEMINI_API_KEY_CLIENT"),
     os.getenv("GEMINI_API_KEY21"),
     os.getenv("GEMINI_API_KEY22"),
     os.getenv("GEMINI_API_KEY23"),
@@ -73,23 +69,34 @@ API_KEYS = [
     os.getenv("GEMINI_API_KEY26"),
     os.getenv("GEMINI_API_KEY27"),
     os.getenv("GEMINI_API_KEY28"),
+    os.getenv("GEMINI_API_KEY29"),
+    os.getenv("GEMINI_API_KEY30"),
 ]
+
+# Filter out None values
+API_KEYS = [key for key in API_KEYS if key is not None]
+
+if not API_KEYS:
+    raise RuntimeError("No valid Gemini API keys found in environment variables.")
+
 api_key_cycle = cycle(API_KEYS)
 current_api_key = next(api_key_cycle)
 
-gemini_models = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
+gemini_models = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"]
 model_cycle = cycle(gemini_models)
 current_model = next(model_cycle)
 
 def configure_gemini(api_key: str):
     """Configure Gemini with the given API key."""
+    if not api_key:
+        raise ValueError("API key cannot be None or empty")
     genai.configure(api_key=api_key)
     print(f"Configured Gemini with API key ending in {api_key[-4:]}")
 
 # Initial configuration
 configure_gemini(current_api_key)
 
-def call_gemini_chat(prompt_text, max_attempts: int = 1):
+def call_gemini_chat(prompt_text, max_attempts: int = 3):
     global current_api_key, current_model
 
     for attempt in range(max_attempts):
@@ -101,40 +108,21 @@ def call_gemini_chat(prompt_text, max_attempts: int = 1):
         except Exception as e:
             error_msg = str(e).lower()
 
-            if "quota" in error_msg or "429" in error_msg or "exceeded" in error_msg:
-                print(f"Quota exceeded for key ending in {current_api_key[-4:]}. Switching to next key...")
+            if "quota" in error_msg or "429" in error_msg or "exceeded" in error_msg or "api_key_invalid" in error_msg:
+                print(f"Issue with key ending in {current_api_key[-4:]} (Model: {current_model}). Switching to next key and model...")
                 current_api_key = next(api_key_cycle)
+                current_model = next(model_cycle)
                 configure_gemini(current_api_key)
+                print(f"Switched to key ending in {current_api_key[-4:]} with model {current_model}")
                 time.sleep(2)
 
             else:
                 print(f"Unexpected error: {e}")
-                raise e
+                if attempt == max_attempts - 1:
+                    raise e
 
     raise RuntimeError("All Gemini API keys/models exhausted after retries.")
 
-
-# PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY", None)
-# if not PERPLEXITY_API_KEY:
-#     raise RuntimeError("Set PERPLEXITY_API_KEY environment variable before running.")
-# perplexity_client = Perplexity()
-
-# PERPLEXITY_MODEL = "sonar-reasoning"
-
-# def call_perplexity_ai(prompt_text):
-#     try:
-#         resp = perplexity_client.chat.completions.create(
-#             model=PERPLEXITY_MODEL,
-#             messages=[
-#                 {"role": "system", "content": "You are a strict information extraction model. Always output valid JSON only."},
-#                 {"role": "user", "content": prompt_text},
-#             ]
-#         )
-#         return resp.choices[0].message.content
-#     except Exception as e:
-#         print("OpenAI API error:", e)
-#         return None
-    
 # ------------------------------------------------------------------
 # PROMPT (exact block you provided — DO NOT CHANGE THIS BLOCK)
 PROMPT_RULES = """
@@ -1367,71 +1355,15 @@ def process_container_files(
 # Example usage:
 if __name__ == "__main__":
     allowed_folders = [
-        '20251002', '20251003', '20251006', '20251007', 
-        '20251119', '20251121', '20251124', '20251125', '20251128', 
-        '20251201', '20251202', '20251203', 
+        '20251201', '20251202', '20251203', '20251205', '20251208',
+        '20251209', '20251210', '20251211', '20251212', '20251215',
+        '20251216', '20251217', '20251218', '20251219', '20251222',
+        '20251223', '20251224', '20251225', '20251226', '20251229',
+        '20251230', '20251231',
+
+        '20260101', '20260102', '20260105', '20260106', '20260108',
+        '20260109', '20260112', '20260113', '20260114', '20260115', '20260116'
     ]
     process_container_files(allowed_folders=allowed_folders)
-
-    # INPUT_FILE = r"C:\Users\BitCoding Solutions\Downloads\HRS-Plate, Fixation, Bone-GM DOS REIS INDUSTRIA E COMERCIO LTDA-202502.csv"
-    # INPUT_FILE = r"C:\Users\BitCoding Solutions\Downloads\mid-30-parsed-output.xlsx"
-    # # OUTPUT_FILE = "te3st_data03.xlsx"
-    # OUTPUT_FILE = "mid-30-gemini-regexfixv2.xlsx"
-
-    # process_excel(INPUT_FILE, OUTPUT_FILE, max_rows=None)
-    # desc = "Modular Femoral Component Trial #09 R"
-    
-    # prompt = PROMPT_RULES + "\n\nNow parse the following Device Description using ONLY the rules above and return a single JSON object. Use empty string \"\" for fields that cannot be determined.\n\nDevice Description:\n" + desc
-    # resp_text = call_gemini_chat(prompt)
-    # print("\n ::: Gemini Response ::: \n", resp_text)
-    # parsed_json = extract_json_from_text(resp_text or "")
-    # print("\n ::: Gemini JSON Parsed Response ::: \n", parsed_json)
-
-    # if not parsed_json:
-    #     parsed = rule_based_parse(desc)
-    # else:
-    #     # Step 2B: Normalize
-    #     normalized = {f: "" for f in OUTPUT_FIELDS}
-    #     for k, v in parsed_json.items():
-    #         if k.lower() in [x.lower() for x in OUTPUT_FIELDS]:
-    #             normalized[k.lower()] = str(v).strip()
-
-    #     # Step 2C: Fill missing fields (rule-based)
-    #     text_up = desc.upper()
-    #     if not normalized.get("diameter"):      normalized["diameter"]    = rb_extract_diameter(text_up) or ""
-    #     if not normalized.get("length"):        normalized["length"]      = rb_extract_length(text_up) or ""
-    #     if not normalized.get("height"):        normalized["height"]      = rb_extract_height(text_up) or ""
-    #     if not normalized.get("width"):         normalized["width"]       = rb_extract_width(text_up) or ""
-    #     if not normalized.get("thickness"):     normalized["thickness"]   = rb_thickness(text_up) or ""
-    #     if not normalized.get("coated"):        normalized["coated"]      = rb_coated(text_up) or ""
-    #     if not normalized.get("constrained"):   normalized["constrained"] = rb_constrained(text_up) or ""
-    #     if not normalized.get("material"):      normalized["material"]    = rb_material(text_up) or ""
-    #     if not normalized.get("cannulated"):    normalized["cannulated"]  = rb_cannulated(text_up) or ""
-    #     if not normalized.get("cancellous"):    normalized["cancellous"]  = rb_cancellous(text_up) or ""
-    #     if not normalized.get("thread"):        normalized["thread"]      = rb_thread(text_up) or ""
-    #     if not normalized.get("locking"):       normalized["locking"]     = rb_locking(text_up) or ""
-    #     if not normalized.get("size"):          normalized["size"]        = rb_size(text_up) or ""
-    #     if not normalized.get("compression"):   normalized["compression"] = rb_compression(text_up) or ""
-    #     if not normalized.get("shape"):         normalized["shape"]       = rb_shape(text_up) or ""
-    #     if not normalized.get("loop"):          normalized["loop"]        = rb_loop(text_up) or ""
-    #     if not normalized.get("bone"):          normalized["bone"]        = rb_bone(text_up) or ""
-    #     if not normalized.get("side"):          normalized["side"]        = rb_side(text_up) or ""
-    #     if not normalized.get("angle"):         normalized["angle"]       = rb_angle(text_up) or ""
-    #     if not normalized.get("position"):      normalized["position"]    = rb_position(text_up) or ""
-    #     if not normalized.get("offset"):        normalized["offset"]      = rb_offset(text_up) or ""
-    #     if not normalized.get("sterile"):       normalized["sterile"]     = rb_sterile(text_up) or ""
-    #     if not normalized.get("headed"):        normalized["headed"]      = rb_headed(text_up) or ""
-    #     if not normalized.get("dimensions"):    normalized["dimensions"]  = ""
-    #     if not normalized.get("color"):         normalized["color"]       = rb_color(text_up) or ""
-    #     if not normalized.get("other"):         normalized["other"]       = rb_other(desc, normalized)
-
-    #     # Fill product using PRODUCT_MAP if empty
-    #     if not normalized.get("product"):
-    #         for k, v in PRODUCT_MAP.items():
-    #             if k in text_up:
-    #                 normalized["product"] = v
-    #                 break
-
-    #     parsed = normalized
 
     # print("\n ::: rule-based JSON Response ::: \n", parsed)

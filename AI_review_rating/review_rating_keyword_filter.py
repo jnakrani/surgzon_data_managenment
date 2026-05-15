@@ -18,53 +18,85 @@ blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CON
 container_client = blob_service_client.get_container_client(AZURE_BLOB_CONTAINER_NAME)
 
 API_KEYS = [
+    os.getenv("GEMINI_API_KEY_CLIENT"),
+    os.getenv("GEMINI_API_KEY1"),
+    os.getenv("GEMINI_API_KEY2"),
+    os.getenv("GEMINI_API_KEY3"),
+    os.getenv("GEMINI_API_KEY4"),
     os.getenv("GEMINI_API_KEY5"),
     os.getenv("GEMINI_API_KEY6"),
-    os.getenv("GEMINI_API_KEY7"),
-    os.getenv("GEMINI_API_KEY8"),
-    # Add more keys if available
-]
 
-# Iterator to cycle through keys
+    os.getenv("GEMINI_API_KEY14"),
+    os.getenv("GEMINI_API_KEY15"),
+    os.getenv("GEMINI_API_KEY16"),
+    os.getenv("GEMINI_API_KEY17"),
+    os.getenv("GEMINI_API_KEY18"),
+    os.getenv("GEMINI_API_KEY19"),
+    os.getenv("GEMINI_API_KEY20"),
+]
 api_key_cycle = cycle(API_KEYS)
 current_api_key = next(api_key_cycle)
+
+gemini_models = ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"]
+model_cycle = cycle(gemini_models)
+current_model = next(model_cycle)
 
 def configure_gemini(api_key: str):
     """Configure Gemini with the given API key."""
     genai.configure(api_key=api_key)
     logger.info(f"Configured Gemini with API key ending in {api_key[-4:]}")
+    print(f"Configured Gemini with API key ending in {api_key[-4:]}")
+
+def validate_api_keys():
+    """Validate API keys by testing a simple call"""
+    valid_keys = []
+    for i, key in enumerate(API_KEYS):
+        if not key:
+            continue
+        try:
+            genai.configure(api_key=key)
+            model = genai.GenerativeModel("gemini-2.5-flash-lite")
+            resp = model.generate_content("Test", generation_config={"temperature": 0.0})
+            valid_keys.append(key)
+            logger.info(f"✅ API Key {i+1} ending in {key[-4:]} is valid")
+        except Exception as e:
+            logger.warning(f"❌ API Key {i+1} ending in {key[-4:]} is invalid: {str(e)[:100]}")
+    
+    logger.info(f"Found {len(valid_keys)} valid API keys out of {len(API_KEYS)}")
+    return valid_keys
+
+# Validate keys on startup (optional - comment out if you want to skip validation)
+# valid_keys = validate_api_keys()
 
 # Initial configuration
 configure_gemini(current_api_key)
 
-def call_gemini(prompt: str, retries: int = len(API_KEYS)):
-    """
-    Call Gemini API with automatic fallback to next API key if quota exceeded.
-    """
-    global current_api_key
-    
-    for attempt in range(retries):
+def call_gemini(prompt_text, max_attempts: int = 3):
+    global current_api_key, current_model
+
+    for attempt in range(max_attempts):
         try:
-            model = genai.GenerativeModel("gemini-2.5-flash-lite")
-            response = model.generate_content(prompt)
-            return response.text
-        
+            model = genai.GenerativeModel(current_model)
+            resp = model.generate_content(prompt_text, generation_config={"temperature": 0.0})
+            return getattr(resp, "text", str(resp))
+
         except Exception as e:
             error_msg = str(e).lower()
-            
-            if "quota" in error_msg or "429" in error_msg or "exceeded" in error_msg:
-                logger.warning(f"Quota exceeded for key ending in {current_api_key[-4:]}. Switching to next key...")
-                current_api_key = next(api_key_cycle)
-                configure_gemini(current_api_key)
-            else:
-                logger.error(f"Unexpected error: {e}")
-                raise e
-    
-    raise RuntimeError("All Gemini API keys exhausted. Please add more keys.")
 
-# # ---------------- Gemini Setup ----------------
-# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-# genai.configure(api_key=GEMINI_API_KEY)
+            if "quota" in error_msg or "429" in error_msg or "exceeded" in error_msg or "api_key_invalid" in error_msg:
+                print(f"Issue with key ending in {current_api_key[-4:]} (Model: {current_model}). Switching to next key and model...")
+                current_api_key = next(api_key_cycle)
+                current_model = next(model_cycle)
+                configure_gemini(current_api_key)
+                print(f"Switched to key ending in {current_api_key[-4:]} with model {current_model}")
+                time.sleep(2)
+
+            else:
+                print(f"Unexpected error: {e}")
+                if attempt == max_attempts - 1:
+                    raise e
+
+    raise RuntimeError("All Gemini API keys/models exhausted after retries.")
 
 orthopedic_user_review_phrases_varied = [
     "Recovery progress became smoother with",
@@ -133,8 +165,6 @@ orthopedic_user_review_phrases_varied = [
     "Confidence in long-term recovery increased through",
 ]
 
-# total_tokens_used = 0
-
 def generate_review(product_name, description):
     start_phrase = random.choice(orthopedic_user_review_phrases_varied)
 
@@ -166,25 +196,16 @@ def generate_review(product_name, description):
     while True:
         try:
             start_row = time.time()
-            # model = genai.GenerativeModel("gemini-2.0-flash-lite") # gemini-2.5-flash-lite gemini-2.0-flash
             prompt = f"{system}\n\n" + user_template.format(
                 start_phrase=start_phrase,
                 product_name=product_name,
                 description=description
             )
 
-            # response = model.generate_content(prompt)
             review_text = call_gemini(prompt).strip()
-
 
             word_count = len(review_text.split())
             logger.info(f"📝 Generated review word count: {word_count}")
-
-            # # Count tokens used
-            # if hasattr(response, "usage_metadata") and response.usage_metadata:
-            #     tokens = response.usage_metadata.total_token_count
-            #     total_tokens_used += tokens
-            #     print(f"   📊 Tokens used this row: {tokens}, Total so far: {total_tokens_used}")
 
             end_row = time.time()
             logger.info(f"  ⏱️ Time taken for this row: {end_row - start_row:.2f} seconds")
@@ -223,11 +244,7 @@ def generate_rating(review):
 
     while True:
         try:
-            start_row = time.time() 
-            # model = genai.GenerativeModel("gemini-2.0-flash-lite")
-            # response = model.generate_content(rating_prompt)
-            # rating_text = response.text.strip()
-
+            start_row = time.time()
             rating_text = call_gemini(rating_prompt).strip()
 
             # Extract number only (ensure it's valid 1–5)
@@ -240,12 +257,6 @@ def generate_rating(review):
             # Word count of the review (for reference/logging)
             word_count = len(review.split())
             logger.info(f"⭐ Generated rating: {rating} (Review word count: {word_count})")
-
-            # # Count tokens (if available from API)
-            # if hasattr(response, "usage_metadata") and response.usage_metadata:
-            #     tokens = response.usage_metadata.total_token_count
-            #     total_tokens_used += tokens
-            #     logger.info(f"   📊 Tokens used: {tokens}, Total so far: {total_tokens_used}")
 
             end_row = time.time()
             logger.info(f"  ⏱️ Time taken for rating: {end_row - start_row:.2f} seconds")
@@ -261,26 +272,33 @@ def generate_rating(review):
             time.sleep(25)
 
 
-def process_container_files(output_prefix="latest_full_release_review-rating/"):
+def process_container_files(
+    output_prefix="AI-review-rating-output01/",
+    allowed_folders=None
+):
     """
-    Process only files from 'latest_full_release' folder.
-    - Skips already processed files.
-    - Saves results row by row (so resume is possible if interrupted).
+    Process only files from specific folders in Azure blob storage.
+    - Saves into structure:
+      AI-review-rating-output01/{date}_review-rating/<file>-AI-Review&Rating.csv
     """
 
-    logger.info("📂 Fetching files from Azure container (latest_full_release only)...")
+    logger.info("📂 Fetching files from Azure container...")
+
+    if allowed_folders is None:
+        allowed_folders = []
+
     file_count = 0
     row_count_total = 0
 
-    # Define keywords to filter files ---
     keywords = ["Foot", "Ankle", "Plate", "Screws", "Knee", "Hip", "Screw"]
 
-    # Collect only blobs inside latest_full_release/
     blobs = []
     for blob in container_client.list_blobs():
         if not (blob.name.endswith(".csv") or blob.name.endswith(".xlsx")):
             continue
-        if not blob.name.startswith("latest_full_release/"):
+
+        # ✅ Check allowed folders
+        if not any(blob.name.startswith(f"{folder}/") for folder in allowed_folders):
             continue
 
         filename = os.path.basename(blob.name)
@@ -289,19 +307,25 @@ def process_container_files(output_prefix="latest_full_release_review-rating/"):
 
         blobs.append(blob)
 
-    logger.info(f"📂 Found {len(blobs)} matching files in latest_full_release/")
+    logger.info(f"📂 Found {len(blobs)} matching files in {allowed_folders}")
 
-    # Process each file
     for blob in blobs:
-        input_filename = os.path.basename(blob.name).replace(".csv", "")
+        # --- extract folder name (e.g. 20250402) ---
+        folder_name = blob.name.split("/")[0]
+
+        # --- create folder structure like AI-review-rating-output01/20250402_review-rating/ ---
+        output_folder = f"{output_prefix}{folder_name}_review-rating/"
+
+        # --- build output path ---
         output_blob_name = (
-            f"{output_prefix}{os.path.basename(blob.name).replace('.csv', '-AI-Review&Rating.csv')}"
+            f"{output_folder}{os.path.basename(blob.name).replace('.csv', '-AI-Review&Rating.csv')}"
         )
         output_blob_client = container_client.get_blob_client(output_blob_name)
 
         logger.info(f"\n📂 Processing file: {blob.name}")
+        logger.info(f"📂 Saving results to: {output_blob_name}")
 
-        # --- Download input file ---
+        # --- download original file ---
         blob_client = container_client.get_blob_client(blob.name)
         data = blob_client.download_blob().readall()
 
@@ -355,7 +379,6 @@ def process_container_files(output_prefix="latest_full_release_review-rating/"):
 
             description = row.get("Device Description", "")
             if pd.isna(description) or str(description).strip() == "":
-                # 🚨 Skip this row completely (leave AI_review & AI_rating blank)
                 logger.info(f"⚠️ Skipping row {idx+1}/{row_count} - Device Description missing")
                 continue  
 
@@ -386,5 +409,17 @@ def process_container_files(output_prefix="latest_full_release_review-rating/"):
     logger.info(f"📊 Total files processed: {file_count}")
     logger.info(f"📑 Total rows processed: {row_count_total}")
 
+
 if __name__ == "__main__":
-    process_container_files()
+    allowed_folders = [
+        # '20251002', '20251003', '20251006', '20251007', 
+        # '20251119', '20251121', '20251124', '20251125', '20251128', 
+        # '20251201', '20251202', '20251203',
+        # '20251203', '20251205', '20251208', '20251209', '20251210', '20251211', 
+        # '20251212', '20251215', '20251216', '20251217', '20251218', '20251219', '20251222'
+        '20251223', '20251224'
+    ] 
+    process_container_files(
+        output_prefix="AI-review-rating-output01/",
+        allowed_folders=allowed_folders
+    )

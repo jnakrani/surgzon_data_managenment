@@ -6,7 +6,7 @@ from spacy.training import Example
 # ==========================
 # CONFIG
 # ==========================
-INPUT_FILE = "C:/tarun-bitcoding/Surgzon/Data_Extractor/SZO-sample-file.xlsx"
+INPUT_FILE = os.path.join(os.path.dirname(__file__), "..", "SZO-sample-file.xlsx")
 MODEL_DIR = "product_ner_model"
 TARGET_FIELDS = ["company","product","warranty","length","diameter","height", "coated", "thickness", "constrained", "cannulated", "cancellous", "thread", "locking", "other", "size", "compression", "shape", "loop", "bone", "flat", "wedge", "side", "angle", "position", "offset", "sterile"]
 # ==========================

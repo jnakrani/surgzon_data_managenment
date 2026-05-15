@@ -18,53 +18,87 @@ blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CON
 container_client = blob_service_client.get_container_client(AZURE_BLOB_CONTAINER_NAME)
 
 API_KEYS = [
-    os.getenv("GEMINI_API_KEY1"),
-    os.getenv("GEMINI_API_KEY2"),
-    os.getenv("GEMINI_API_KEY3"),
-    os.getenv("GEMINI_API_KEY4"),
-    # Add more keys if available
-]
+    os.getenv("GEMINI_API_KEY_CLIENT"),
+    os.getenv("GEMINI_API_KEY7"),
+    os.getenv("GEMINI_API_KEY8"),
+    os.getenv("GEMINI_API_KEY9"),
+    os.getenv("GEMINI_API_KEY10"),
+    os.getenv("GEMINI_API_KEY11"),
+    os.getenv("GEMINI_API_KEY12"),
+    os.getenv("GEMINI_API_KEY13"),
 
-# Iterator to cycle through keys
+    os.getenv("GEMINI_API_KEY22"),
+    os.getenv("GEMINI_API_KEY23"),
+    os.getenv("GEMINI_API_KEY24"),
+    os.getenv("GEMINI_API_KEY25"),
+    os.getenv("GEMINI_API_KEY26"),
+    os.getenv("GEMINI_API_KEY27"),
+    os.getenv("GEMINI_API_KEY28"),
+    os.getenv("GEMINI_API_KEY29"),
+]
 api_key_cycle = cycle(API_KEYS)
 current_api_key = next(api_key_cycle)
+
+gemini_models = ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro"]
+model_cycle = cycle(gemini_models)
+current_model = next(model_cycle)
 
 def configure_gemini(api_key: str):
     """Configure Gemini with the given API key."""
     genai.configure(api_key=api_key)
     logger.info(f"Configured Gemini with API key ending in {api_key[-4:]}")
+    print(f"Configured Gemini with API key ending in {api_key[-4:]}")
+
+def validate_api_keys():
+    """Validate API keys by testing a simple call"""
+    valid_keys = []
+    for i, key in enumerate(API_KEYS):
+        if not key:
+            continue
+        try:
+            genai.configure(api_key=key)
+            model = genai.GenerativeModel("gemini-2.5-flash-lite")
+            resp = model.generate_content("Test", generation_config={"temperature": 0.0})
+            valid_keys.append(key)
+            logger.info(f"✅ API Key {i+1} ending in {key[-4:]} is valid")
+        except Exception as e:
+            logger.warning(f"❌ API Key {i+1} ending in {key[-4:]} is invalid: {str(e)[:100]}")
+    
+    logger.info(f"Found {len(valid_keys)} valid API keys out of {len(API_KEYS)}")
+    return valid_keys
+
+# Validate keys on startup (optional - comment out if you want to skip validation)
+# valid_keys = validate_api_keys()
 
 # Initial configuration
 configure_gemini(current_api_key)
 
-def call_gemini(prompt: str, retries: int = len(API_KEYS)):
-    """
-    Call Gemini API with automatic fallback to next API key if quota exceeded.
-    """
-    global current_api_key
-    
-    for attempt in range(retries):
+def call_gemini(prompt_text, max_attempts: int = 3):
+    global current_api_key, current_model
+
+    for attempt in range(max_attempts):
         try:
-            model = genai.GenerativeModel("gemini-2.5-flash-lite")
-            response = model.generate_content(prompt)
-            return response.text
-        
+            model = genai.GenerativeModel(current_model)
+            resp = model.generate_content(prompt_text, generation_config={"temperature": 0.0})
+            return getattr(resp, "text", str(resp))
+
         except Exception as e:
             error_msg = str(e).lower()
-            
-            if "quota" in error_msg or "429" in error_msg or "exceeded" in error_msg:
-                logger.warning(f"Quota exceeded for key ending in {current_api_key[-4:]}. Switching to next key...")
-                current_api_key = next(api_key_cycle)
-                configure_gemini(current_api_key)
-            else:
-                logger.error(f"Unexpected error: {e}")
-                raise e
-    
-    raise RuntimeError("All Gemini API keys exhausted. Please add more keys.")
 
-# # ---------------- Gemini Setup ----------------
-# GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-# genai.configure(api_key=GEMINI_API_KEY)
+            if "quota" in error_msg or "429" in error_msg or "exceeded" in error_msg or "api_key_invalid" in error_msg:
+                print(f"Issue with key ending in {current_api_key[-4:]} (Model: {current_model}). Switching to next key and model...")
+                current_api_key = next(api_key_cycle)
+                current_model = next(model_cycle)
+                configure_gemini(current_api_key)
+                print(f"Switched to key ending in {current_api_key[-4:]} with model {current_model}")
+                time.sleep(2)
+
+            else:
+                print(f"Unexpected error: {e}")
+                if attempt == max_attempts - 1:
+                    raise e
+
+    raise RuntimeError("All Gemini API keys/models exhausted after retries.")
 
 orthopedic_user_review_phrases_varied = [
     "Recovery progress became smoother with",
@@ -133,8 +167,6 @@ orthopedic_user_review_phrases_varied = [
     "Confidence in long-term recovery increased through",
 ]
 
-# total_tokens_used = 0
-
 def generate_review(product_name, description):
     start_phrase = random.choice(orthopedic_user_review_phrases_varied)
 
@@ -147,7 +179,7 @@ def generate_review(product_name, description):
     }
 
     user_template = """
-    Write a natural, human-like product review in a single paragraph. The review should be exactly 8 to 10 lines when formatted as a paragraph, contain between 70 and 120 words. Do not exceed 120 words.
+    Write a natural, human-like product review in a single paragraph. The review should be exactly 7 to 8 lines when formatted as a paragraph, contain between 70 and 120 words. Do not exceed 120 words.
     The opening sentence must use this starting phrase: "{start_phrase}" 
     and must not reuse the same first three words as any previous review.
     Do not start with: "This product", "When it comes to".
@@ -166,31 +198,22 @@ def generate_review(product_name, description):
     while True:
         try:
             start_row = time.time()
-            # model = genai.GenerativeModel("gemini-2.0-flash-lite") # gemini-2.5-flash-lite gemini-2.0-flash
             prompt = f"{system}\n\n" + user_template.format(
                 start_phrase=start_phrase,
                 product_name=product_name,
                 description=description
             )
 
-            # response = model.generate_content(prompt)
             review_text = call_gemini(prompt).strip()
-
 
             word_count = len(review_text.split())
             logger.info(f"📝 Generated review word count: {word_count}")
-
-            # # Count tokens used
-            # if hasattr(response, "usage_metadata") and response.usage_metadata:
-            #     tokens = response.usage_metadata.total_token_count
-            #     total_tokens_used += tokens
-            #     print(f"   📊 Tokens used this row: {tokens}, Total so far: {total_tokens_used}")
 
             end_row = time.time()
             logger.info(f"  ⏱️ Time taken for this row: {end_row - start_row:.2f} seconds")
 
             sleep_time = random.uniform(2, 5) 
-            logger.info(f"😴Sleeping {sleep_time:.2f} seconds...")
+            logger.info(f"      😴Sleeping {sleep_time:.2f} seconds...")
             time.sleep(sleep_time)
 
             return review_text 
@@ -223,11 +246,7 @@ def generate_rating(review):
 
     while True:
         try:
-            start_row = time.time() 
-            # model = genai.GenerativeModel("gemini-2.0-flash-lite")
-            # response = model.generate_content(rating_prompt)
-            # rating_text = response.text.strip()
-
+            start_row = time.time()
             rating_text = call_gemini(rating_prompt).strip()
 
             # Extract number only (ensure it's valid 1–5)
@@ -241,17 +260,11 @@ def generate_rating(review):
             word_count = len(review.split())
             logger.info(f"⭐ Generated rating: {rating} (Review word count: {word_count})")
 
-            # # Count tokens (if available from API)
-            # if hasattr(response, "usage_metadata") and response.usage_metadata:
-            #     tokens = response.usage_metadata.total_token_count
-            #     total_tokens_used += tokens
-            #     logger.info(f"   📊 Tokens used: {tokens}, Total so far: {total_tokens_used}")
-
             end_row = time.time()
             logger.info(f"  ⏱️ Time taken for rating: {end_row - start_row:.2f} seconds")
 
             sleep_time = random.uniform(2, 5)
-            logger.info(f"😴 Sleeping {sleep_time:.2f} seconds...")
+            logger.info(f"      😴 Sleeping {sleep_time:.2f} seconds...")
             time.sleep(sleep_time)
 
             return rating
@@ -261,148 +274,150 @@ def generate_rating(review):
             time.sleep(25)
 
 
-def process_container_files(output_prefix="AI-review-rating-output01/"):
+def process_container_files(
+    output_prefix="AI-review-rating-output01/",
+    allowed_folders=None
+):
     """
-    Process Azure container files folder-wise.
-    - Skips already processed files.
-    - Saves results row by row (so resume is possible if interrupted).
+    Process only files from specific folders in Azure blob storage.
+    - Saves into structure:
+      AI-review-rating-output01/{date}_review-rating/<file>-AI-Review&Rating.csv
     """
 
     logger.info("📂 Fetching files from Azure container...")
+
+    if allowed_folders is None:
+        allowed_folders = []
+
     file_count = 0
     row_count_total = 0
 
-    # Define keywords to filter files ---
     keywords = ["Foot", "Ankle", "Plate", "Screws", "Knee", "Hip", "Screw"]
 
-    # Group blobs by parent folder (e.g., 20250214/output/) ---
-    folders = {}
+    blobs = []
     for blob in container_client.list_blobs():
         if not (blob.name.endswith(".csv") or blob.name.endswith(".xlsx")):
             continue
-        if "/output/" not in blob.name:
+
+        # ✅ Check allowed folders
+        if not any(blob.name.startswith(f"{folder}/") for folder in allowed_folders):
             continue
 
-        # ✅ Extract just the filename for keyword filtering
         filename = os.path.basename(blob.name)
-
         if not any(kw.lower() in filename.lower() for kw in keywords):
             continue
 
-        folder_name = blob.name.split("/")[0]  # e.g., "20250214"
-        if folder_name not in folders:
-            folders[folder_name] = []
-        folders[folder_name].append(blob)
+        blobs.append(blob)
 
-    # Process folder by folder ---
-    for folder_name, blobs in folders.items():
+    logger.info(f"📂 Found {len(blobs)} matching files in {allowed_folders}")
+
+    for blob in blobs:
+        # --- extract folder name (e.g. 20250402) ---
+        folder_name = blob.name.split("/")[0]
+
+        # --- create folder structure like AI-review-rating-output01/20250402_review-rating/ ---
         output_folder = f"{output_prefix}{folder_name}_review-rating/"
 
-        logger.info(f"\n📂 Processing folder: {folder_name}")
+        # --- build output path ---
+        output_blob_name = (
+            f"{output_folder}{os.path.basename(blob.name).replace('.csv', '-AI-Review&Rating.csv')}"
+        )
+        output_blob_client = container_client.get_blob_client(output_blob_name)
 
-        for blob in blobs:
-            input_filename = os.path.basename(blob.name).replace(".csv", "")
-            output_blob_name = (
-                f"{output_folder}{os.path.basename(blob.name).replace('.csv', '-AI-Review&Rating.csv')}"
-            )
-            output_blob_client = container_client.get_blob_client(output_blob_name)
+        logger.info(f"\n📂 Processing file: {blob.name}")
+        logger.info(f"📂 Saving results to: {output_blob_name}")
 
-            # Download input file ---
-            blob_client = container_client.get_blob_client(blob.name)
-            data = blob_client.download_blob().readall()
+        # --- download original file ---
+        blob_client = container_client.get_blob_client(blob.name)
+        data = blob_client.download_blob().readall()
 
-            if blob.name.endswith(".csv"):
-                df = pd.read_csv(StringIO(data.decode("utf-8")))
-            else:
-                df = pd.read_excel(BytesIO(data))
+        if blob.name.endswith(".csv"):
+            df = pd.read_csv(StringIO(data.decode("utf-8")))
+        else:
+            df = pd.read_excel(BytesIO(data))
 
-            # Ensure review & rating columns exist
-            if "AI_review" not in df.columns:
-                df["AI_review"] = ""
-            if "AI_rating" not in df.columns:
-                df["AI_rating"] = ""
+        # Ensure review & rating columns exist
+        if "AI_review" not in df.columns:
+            df["AI_review"] = ""
+        if "AI_rating" not in df.columns:
+            df["AI_rating"] = ""
 
-            # Check if output file exists (resume support) ---
-            try:
-                existing_data = output_blob_client.download_blob().readall()
-                df_out = pd.read_csv(StringIO(existing_data.decode("utf-8")))
-                logger.info(f"🔄 Resuming {blob.name} ({len(df_out)} rows already processed)")
-                # Merge processed results into df
-                for col in ["AI_review", "AI_rating"]:
-                    if col in df_out.columns:
-                        df[col] = df_out[col]
+        # Resume support
+        try:
+            existing_data = output_blob_client.download_blob().readall()
+            df_out = pd.read_csv(StringIO(existing_data.decode("utf-8")))
+            logger.info(f"🔄 Resuming {blob.name} ({len(df_out)} rows already processed)")
 
-                # Count how many rows are actually done
-                completed_rows = df[
-                    (df["AI_review"].notna()) & (df["AI_review"].astype(str).str.strip() != "") &
-                    (df["AI_rating"].notna()) & (df["AI_rating"].astype(str).str.strip() != "")
-                ].shape[0]
+            for col in ["AI_review", "AI_rating"]:
+                if col in df_out.columns:
+                    df[col] = df_out[col]
 
-                if completed_rows == len(df):
-                    logger.info(f"⏩ Skipping...✅ File already fully processed: {blob.name}")
-                    continue  # skip file safely
+            completed_rows = df[
+                (df["AI_review"].notna()) & (df["AI_review"].astype(str).str.strip() != "") &
+                (df["AI_rating"].notna()) & (df["AI_rating"].astype(str).str.strip() != "")
+            ].shape[0]
 
-                logger.info(f"🔄 Resuming {blob.name} ({completed_rows}/{len(df)} rows already processed)")
-
-            except Exception:
-                logger.info(f"➡️ Starting fresh for {blob.name}")
-
-            row_count = len(df)
-            row_count_total += row_count
-            logger.info(f"   📑 Rows in {blob.name}: {row_count}")
-
-            # ✅ NEW: Check if file is fully processed
-            if (
-                df["AI_review"].notna().all()
-                and df["AI_review"].astype(str).str.strip().ne("").all()
-                and df["AI_rating"].notna().all()
-                and df["AI_rating"].astype(str).str.strip().ne("").all()
-            ):
-                logger.info(f"⏩ Skipping {blob.name} (already fully processed)")
+            if completed_rows == len(df):
+                logger.info(f"⏩ Skipping...✅ File already fully processed: {blob.name}")
                 continue
 
-            # Process rows one by one ---
-            for idx, row in tqdm(df.iterrows(), total=row_count, desc=f"📂 Processing {os.path.basename(blob.name)}"):
-                review_val = df.at[idx, "AI_review"]
-                rating_val = df.at[idx, "AI_rating"]
+            logger.info(f"🔄 Resuming {blob.name} ({completed_rows}/{len(df)} rows already processed)")
 
-                if pd.notna(review_val) and str(review_val).strip() != "" and \
-                pd.notna(rating_val) and str(rating_val).strip() != "":
-                    continue  # Skip only if both values are already filled
+        except Exception:
+            logger.info(f"➡️ Starting fresh for {blob.name}")
 
-                description = row.get("Device Description", "")
-                if pd.isna(description) or str(description).strip() == "":
-                    # 🚨 Skip this row completely (leave AI_review & AI_rating blank)
-                    logger.info(f"⚠️ Skipping row {idx+1}/{row_count} - Device Description missing")
-                    continue  
+        row_count = len(df)
+        row_count_total += row_count
+        logger.info(f"   📑 Rows in {blob.name}: {row_count}")
 
-                # ✅ Only generate if Device Description exists
-                if pd.isna(row["AI_review"]) or row["AI_review"] == "":
-                    review = generate_review(row.get("Brand Name", ""), description)
-                    df.at[idx, "AI_review"] = review
-                    logger.info(f"          📝 Row {idx+1}/{row_count} review generated")
+        # Process rows one by one ---
+        for idx, row in tqdm(df.iterrows(), total=row_count, desc=f"📂 Processing {os.path.basename(blob.name)}"):
+            review_val = df.at[idx, "AI_review"]
+            rating_val = df.at[idx, "AI_rating"]
 
-                if pd.isna(row["AI_rating"]) or row["AI_rating"] == "":
-                    rating = generate_rating(df.at[idx, "AI_review"])
-                    df.at[idx, "AI_rating"] = rating
-                    logger.info(f"          ⭐ Row {idx+1}/{row_count} rating generated")
+            if pd.notna(review_val) and str(review_val).strip() != "" and \
+            pd.notna(rating_val) and str(rating_val).strip() != "":
+                continue  # Skip only if both values are already filled
 
-                # Save progress after each row ---
-                output_csv = StringIO()
-                df.to_csv(output_csv, index=False)
-                output_csv.seek(0)
-                output_blob_client.upload_blob(output_csv.getvalue(), overwrite=True)
+            description = row.get("Device Description", "")
+            if pd.isna(description) or str(description).strip() == "":
+                logger.info(f"⚠️ Skipping row {idx+1}/{row_count} - Device Description missing")
+                continue  
 
-                logger.info(f"✅ Progress saved at row {idx+1}/{row_count}\n")
+            # ✅ Only generate if Device Description exists
+            if pd.isna(row["AI_review"]) or row["AI_review"] == "":
+                review = generate_review(row.get("Brand Name", ""), description)
+                df.at[idx, "AI_review"] = review
+                logger.info(f"          📝 Row {idx+1}/{row_count} review generated")
 
-            file_count += 1
-            logger.info(f"✅ Completed {blob.name} -> {output_blob_name}")
+            if pd.isna(row["AI_rating"]) or row["AI_rating"] == "":
+                rating = generate_rating(df.at[idx, "AI_review"])
+                df.at[idx, "AI_rating"] = rating
+                logger.info(f"          ⭐ Row {idx+1}/{row_count} rating generated")
 
-    # Summary report ---
+            # Save progress after each row ---
+            output_csv = StringIO()
+            df.to_csv(output_csv, index=False)
+            output_csv.seek(0)
+            output_blob_client.upload_blob(output_csv.getvalue(), overwrite=True)
+
+            logger.info(f"✅ Progress saved at row {idx+1}/{row_count}\n")
+
+        file_count += 1
+        logger.info(f"✅ Completed {blob.name} -> {output_blob_name}")
+
+    # Summary
     logger.info("\n🎉 Processing completed!")
     logger.info(f"📊 Total files processed: {file_count}")
     logger.info(f"📑 Total rows processed: {row_count_total}")
 
 
 if __name__ == "__main__":
-    process_container_files()
+    allowed_folders = [
+        '20260508',
+        # '20251218', '20251219', '20251222'
+    ] 
+    process_container_files(
+        output_prefix="AI-review-rating-output01/",
+        allowed_folders=allowed_folders
+    )
