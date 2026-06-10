@@ -11,6 +11,8 @@ from azure.storage.blob import BlobServiceClient
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+from folder_fetcher import get_recent_folders
+from auto_config import *
 
 load_dotenv()
 
@@ -1140,27 +1142,95 @@ def process_container_files_threaded(
     print(f"🧵 Used {max_workers} parallel threads")
 
 
+def get_recent_folders_automatically(days=None, method="date_range"):
+    """
+    Automatically fetch recent folders from Azure blob storage.
+
+    Args:
+        days (int): Number of recent days to fetch folders for (default: from config)
+        method (str): Method to use for fetching ("date_range", "modified", "created", "both")
+
+    Returns:
+        List[str]: List of recent folder names
+    """
+    if days is None:
+        days = DAYS_TO_FETCH
+
+    print(f"🔄 Auto-fetching folders using method '{method}' for last {days} days...")
+
+    try:
+        if method == "date_range":
+            recent_folders = get_recent_folders(days=days)
+        elif method == "modified":
+            from folder_fetcher import get_folders_by_last_modified
+            hours = days * 24
+            recent_folders = get_folders_by_last_modified(hours_ago=hours)
+        elif method == "created":
+            from folder_fetcher import get_folders_by_creation_time
+            hours = days * 24
+            recent_folders = get_folders_by_creation_time(hours_ago=hours)
+        elif method == "both":
+            from folder_fetcher import get_newly_added_folders
+            hours = days * 24
+            recent_folders = get_newly_added_folders(hours_ago=hours, method="both")
+        else:
+            print(f"❌ Invalid method '{method}'. Using 'date_range' as fallback.")
+            recent_folders = get_recent_folders(days=days)
+
+        if recent_folders:
+            print(f"✅ Auto-fetched {len(recent_folders)} recent folders: {recent_folders}")
+        else:
+            print(f"⚠️ No folders found using method '{method}' for last {days} days")
+
+        return recent_folders
+
+    except Exception as e:
+        print(f"❌ Error auto-fetching folders: {e}")
+        print("⚠️ Falling back to manual folder list...")
+        return []
+
+
 # Example usage:
 if __name__ == "__main__":
-    allowed_folders = [
-        # '20260420', '20260421', '20260422',  
-        # '20260423', '20260424', '20260428', '20260429', '20260430',
-        # '20260501', '20260504', '20260505', '20260506', '20260507', '20260508'
-        '20260505', '20260506', '20260507', '20260508', '20260511', '20260512', '20260513'
-    ]
-    # 🧵 Threading configuration
-    MAX_WORKERS = 5           # Number of parallel threads
-    BATCH_SAVE_SIZE = 10      # Save progress every N completed rows
-    
     print("🚀 Starting AI Data Extraction with THREADING")
-    print(f"🧵 Using {MAX_WORKERS} parallel threads")
-    print(f"💾 Saving progress every {BATCH_SAVE_SIZE} completed rows")
     print("=" * 70)
-    
+
+    # 🔄 Determine which folders to use
+    if AUTO_FETCH_FOLDERS:
+        print("🔄 AUTO_FETCH_FOLDERS enabled - fetching recent folders automatically...")
+        print(f"   📅 Days to fetch: {DAYS_TO_FETCH}")
+        print(f"   🔧 Method: {FOLDER_FETCH_METHOD}")
+
+        allowed_folders = get_recent_folders_automatically(
+            days=DAYS_TO_FETCH,
+            method=FOLDER_FETCH_METHOD
+        )
+
+        if not allowed_folders and USE_MANUAL_FALLBACK:
+            print("⚠️ Auto-fetch returned no folders, falling back to manual list")
+            allowed_folders = MANUAL_ALLOWED_FOLDERS
+        elif not allowed_folders:
+            print("❌ No folders found and manual fallback is disabled")
+            print("   Either enable USE_MANUAL_FALLBACK or check your Azure connection")
+            exit(1)
+    else:
+        print("📂 Using manual folder list from config...")
+        allowed_folders = MANUAL_ALLOWED_FOLDERS
+
+    print(f"📂 Final folder list ({len(allowed_folders)} folders): {allowed_folders}")
+
+    # 🧵 Threading configuration
+    MAX_WORKERS_FINAL = MAX_WORKERS           # Number of parallel threads
+    BATCH_SAVE_SIZE_FINAL = BATCH_SAVE_SIZE   # Save progress every N completed rows
+
+    print(f"🧵 Using {MAX_WORKERS_FINAL} parallel threads")
+    print(f"💾 Saving progress every {BATCH_SAVE_SIZE_FINAL} completed rows")
+    print("=" * 70)
+
     # Run the threaded processing
     process_container_files_threaded(
         output_prefix="AI-data-extract-output/",
         allowed_folders=allowed_folders,
-        max_workers=MAX_WORKERS,
-        batch_save_size=BATCH_SAVE_SIZE
+        max_workers=MAX_WORKERS_FINAL,
+        batch_save_size=BATCH_SAVE_SIZE_FINAL
     )
